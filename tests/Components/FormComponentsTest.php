@@ -6,16 +6,6 @@ use JeroenNoten\LaravelAdminLte\Components;
 class FormComponentsTest extends TestCase
 {
     /**
-     * Get package providers.
-     */
-    protected function getPackageProviders($app)
-    {
-        // Register our service provider into the Laravel's application.
-
-        return ['JeroenNoten\LaravelAdminLte\AdminLteServiceProvider'];
-    }
-
-    /**
      * Return array with the available blade components.
      */
     protected function getComponents()
@@ -37,6 +27,7 @@ class FormComponentsTest extends TestCase
             "{$base}.select-bs"    => new Components\Form\SelectBs('name'),
             "{$base}.textarea"     => new Components\Form\Textarea('name'),
             "{$base}.text-editor"  => new Components\Form\TextEditor('name'),
+            "{$base}.options"      => new Components\Form\Options(['o1, o2']),
         ];
     }
 
@@ -149,6 +140,64 @@ class FormComponentsTest extends TestCase
         $this->assertStringContainsString('igroup-class', $iGroupClass);
         $this->assertStringContainsString('adminlte-invalid-iswgroup', $iGroupClass);
         $this->assertStringContainsString('is-invalid', $iClass);
+    }
+
+    public function testOptionsComponent()
+    {
+        $options = ['m' => 'Male', 'f' => 'Female', 'o' => 'Other'];
+        $component = new Components\Form\Options($options, 'f', 'o');
+
+        // Test selected / disabled options.
+
+        $this->assertFalse($component->isSelected('m'));
+        $this->assertTrue($component->isSelected('f'));
+        $this->assertFalse($component->isDisabled('m'));
+        $this->assertTrue($component->isDisabled('o'));
+
+        // Test rendered HTML.
+
+        $html = $component->resolveView()->with($component->data());
+        $format = '%A<option%avalue="m"%A>%AMale%A</option>%A';
+        $format .= '<option%avalue="f"%Aselected%A>%AFemale%A</option>%A';
+        $format .= '<option%avalue="o"%Adisabled%A>%AOther%A</option>%A';
+
+        $this->assertStringMatchesFormat($format, $html);
+
+        // Test rendered HTML with empty option (no label).
+
+        $component = new Components\Form\Options($options, 'f', 'o', null, true);
+
+        $html = $component->resolveView()->with($component->data());
+        $format = '%A<option%Avalue%A>%A</option>%A';
+        $format .= '%A<option%avalue="m"%A>%AMale%A</option>%A';
+        $format .= '<option%avalue="f"%Aselected%A>%AFemale%A</option>%A';
+        $format .= '<option%avalue="o"%Adisabled%A>%AOther%A</option>%A';
+
+        $this->assertStringMatchesFormat($format, $html);
+
+        // Test rendered HTML with empty option (and label).
+
+        $component = new Components\Form\Options($options, 'f', 'o', null, 'Label');
+
+        $html = $component->resolveView()->with($component->data());
+        $format = '%A<option%Avalue%A>%ALabel%A</option>%A';
+        $format .= '%A<option%avalue="m"%A>%AMale%A</option>%A';
+        $format .= '<option%avalue="f"%Aselected%A>%AFemale%A</option>%A';
+        $format .= '<option%avalue="o"%Adisabled%A>%AOther%A</option>%A';
+
+        $this->assertStringMatchesFormat($format, $html);
+
+        // Test rendered HTML with placeholder.
+
+        $component = new Components\Form\Options($options, 'f', 'o', null, null, 'Placeholder');
+
+        $html = $component->resolveView()->with($component->data());
+        $format = '%A<option%Aclass="d-none"%Avalue%A>%APlaceholder%A</option>%A';
+        $format .= '%A<option%avalue="m"%A>%AMale%A</option>%A';
+        $format .= '<option%avalue="f"%Aselected%A>%AFemale%A</option>%A';
+        $format .= '<option%avalue="o"%Adisabled%A>%AOther%A</option>%A';
+
+        $this->assertStringMatchesFormat($format, $html);
     }
 
     public function testSelectComponent()
