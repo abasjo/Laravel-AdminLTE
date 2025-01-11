@@ -34,7 +34,6 @@ class InstallTest extends CommandTestCase
         // Test installation of the resources.
 
         foreach ($this->getResources() as $name => $res) {
-
             // Ensure the required vendor assets exists, if needed.
 
             if ($name === 'assets') {
@@ -57,17 +56,12 @@ class InstallTest extends CommandTestCase
         }
     }
 
-    public function testInstallOnlyInteractive()
+    public function testInstallOnlyWithInteractiveFlag()
     {
-        // We can't do these test on old laravel versions.
+        // We can't perfom these tests on old Laravel versions. We need support
+        // for the expect confirmation method.
 
-        if (! class_exists('Illuminate\Testing\PendingCommand')) {
-            $this->assertTrue(true);
-
-            return;
-        }
-
-        if (! method_exists('Illuminate\Testing\PendingCommand', 'expectsConfirmation')) {
+        if (! $this->canExpectsConfirmation()) {
             $this->assertTrue(true);
 
             return;
@@ -88,14 +82,14 @@ class InstallTest extends CommandTestCase
 
             $res->uninstall();
 
-            // Test with --interactive option (response with no).
+            // Test with --interactive option and respond with NO.
 
             $this->artisan("adminlte:install --only={$name} --interactive")
                  ->expectsConfirmation($confirmMsg, 'no');
 
             $this->assertFalse($res->installed());
 
-            // Test with --interactive option (response with yes).
+            // Test with --interactive option and respond with YES.
 
             $this->artisan("adminlte:install --only={$name} --interactive")
                  ->expectsConfirmation($confirmMsg, 'yes');
@@ -109,23 +103,18 @@ class InstallTest extends CommandTestCase
         }
     }
 
-    public function testInstallOnlyOverwrite()
+    public function testInstallOnlyWithOverwriteWarning()
     {
-        // We can't do these test on old laravel versions.
+        // We can't perfom these tests on old Laravel versions. We need support
+        // for the expect confirmation method.
 
-        if (! class_exists('Illuminate\Testing\PendingCommand')) {
+        if (! $this->canExpectsConfirmation()) {
             $this->assertTrue(true);
 
             return;
         }
 
-        if (! method_exists('Illuminate\Testing\PendingCommand', 'expectsConfirmation')) {
-            $this->assertTrue(true);
-
-            return;
-        }
-
-        // Test installation of the resources when an overwrite will occurs.
+        // Test installation of the resources when an overwrite event occurs.
 
         foreach ($this->getResources() as $name => $res) {
             $confirmMsg = $res->getInstallMessage('overwrite');
@@ -140,25 +129,25 @@ class InstallTest extends CommandTestCase
 
             $this->createDummyResource($name, $res);
 
-            // Test when not confirm the overwrite.
+            // Test when overwrite is not confirmed.
 
             $this->artisan("adminlte:install --only={$name}")
                  ->expectsConfirmation($confirmMsg, 'no');
 
-            if ($name === 'basic_routes') {
+            if ($name === 'auth_routes') {
                 $this->assertTrue($res->installed());
             } else {
                 $this->assertFalse($res->installed());
             }
 
-            // Test when confirm the overwrite.
+            // Test when overwrite is confirmed.
 
             $this->artisan("adminlte:install --only={$name}")
                  ->expectsConfirmation($confirmMsg, 'yes');
 
             $this->assertTrue($res->installed());
 
-            // Test when using --force.
+            // Test when using --force flag.
 
             $this->createDummyResource($name, $res);
             $this->artisan("adminlte:install --only={$name} --force");
@@ -171,7 +160,7 @@ class InstallTest extends CommandTestCase
         }
     }
 
-    public function testInstallOnlyMultipleResources()
+    public function testInstallOnlyWithMultipleResources()
     {
         $resources = [
             $this->getResources('auth_views'),
@@ -243,13 +232,14 @@ class InstallTest extends CommandTestCase
         }
     }
 
-    public function testInstallWithTypeEnhanced()
+    public function testInstallWithTypeBasicWithAuth()
     {
         $resources = [
             $this->getResources('assets'),
             $this->getResources('config'),
             $this->getResources('translations'),
             $this->getResources('auth_views'),
+            $this->getResources('auth_routes'),
         ];
 
         // Ensure the required vendor assets exists.
@@ -264,7 +254,43 @@ class InstallTest extends CommandTestCase
 
         // Install resources using the artisan command.
 
-        $this->artisan('adminlte:install --type=enhanced');
+        $this->artisan('adminlte:install --type=basic_with_auth');
+
+        // Assert that the resources are installed.
+
+        foreach ($resources as $res) {
+            $this->assertTrue($res->installed());
+        }
+
+        // Clear installed resources.
+
+        foreach ($resources as $res) {
+            $res->uninstall();
+        }
+    }
+
+    public function testInstallWithTypeBasicWithViews()
+    {
+        $resources = [
+            $this->getResources('assets'),
+            $this->getResources('config'),
+            $this->getResources('translations'),
+            $this->getResources('main_views'),
+        ];
+
+        // Ensure the required vendor assets exists.
+
+        $this->installVendorAssets();
+
+        // Ensure the target resources do not exists.
+
+        foreach ($resources as $res) {
+            $res->uninstall();
+        }
+
+        // Install resources using the artisan command.
+
+        $this->artisan('adminlte:install --type=basic_with_views');
 
         // Assert that the resources are installed.
 
@@ -286,8 +312,9 @@ class InstallTest extends CommandTestCase
             $this->getResources('config'),
             $this->getResources('translations'),
             $this->getResources('auth_views'),
-            $this->getResources('basic_views'),
-            $this->getResources('basic_routes'),
+            $this->getResources('auth_routes'),
+            $this->getResources('main_views'),
+            $this->getResources('components'),
         ];
 
         // Ensure the required vendor assets exists.
@@ -331,7 +358,7 @@ class InstallTest extends CommandTestCase
             $this->getResources('translations'),
         ];
 
-        $newRes = ['main_views', 'auth_views', 'basic_views', 'basic_routes'];
+        $newRes = ['main_views', 'auth_views', 'auth_routes'];
 
         // Ensure the required vendor assets exists.
 
@@ -375,8 +402,9 @@ class InstallTest extends CommandTestCase
             $this->getResources('assets'),
             $this->getResources('config'),
             $this->getResources('translations'),
-            $this->getResources('basic_routes'),
+            $this->getResources('auth_routes'),
             $this->getResources('auth_views'),
+            $this->getResources('main_views'),
         ];
 
         // Ensure the required vendor assets exists.
@@ -397,7 +425,7 @@ class InstallTest extends CommandTestCase
 
         // Install resources using the artisan command.
 
-        $this->artisan('adminlte:install --type=enhanced --with=basic_routes --with=auth_views');
+        $this->artisan('adminlte:install --type=basic_with_auth --with=auth_routes --with=main_views');
 
         // Assert that the resources are installed.
 

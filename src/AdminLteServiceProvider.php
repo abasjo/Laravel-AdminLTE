@@ -2,78 +2,86 @@
 
 namespace JeroenNoten\LaravelAdminLte;
 
-use Illuminate\Contracts\Config\Repository;
-use Illuminate\Contracts\Container\Container;
-use Illuminate\Contracts\Events\Dispatcher;
-use Illuminate\Contracts\View\Factory;
 use Illuminate\Support\Facades\Route;
+use Illuminate\Support\Facades\View;
 use Illuminate\Support\ServiceProvider as BaseServiceProvider;
 use JeroenNoten\LaravelAdminLte\Console\AdminLteInstallCommand;
 use JeroenNoten\LaravelAdminLte\Console\AdminLtePluginCommand;
+use JeroenNoten\LaravelAdminLte\Console\AdminLteRemoveCommand;
 use JeroenNoten\LaravelAdminLte\Console\AdminLteStatusCommand;
 use JeroenNoten\LaravelAdminLte\Console\AdminLteUpdateCommand;
-use JeroenNoten\LaravelAdminLte\Events\BuildingMenu;
-use JeroenNoten\LaravelAdminLte\Http\ViewComposers\AdminLteComposer;
+use JeroenNoten\LaravelAdminLte\View\Components\Form;
+use JeroenNoten\LaravelAdminLte\View\Components\Layout;
+use JeroenNoten\LaravelAdminLte\View\Components\Tool;
+use JeroenNoten\LaravelAdminLte\View\Components\Widget;
 
 class AdminLteServiceProvider extends BaseServiceProvider
 {
     /**
-     * Array with the available layout components.
+     * The prefix to use for register/load the package resources.
+     *
+     * @var string
+     */
+    protected $pkgPrefix = 'adminlte';
+
+    /**
+     * Array with the available layout blade components.
      *
      * @var array
      */
     protected $layoutComponents = [
-        Components\Layout\NavbarDarkmodeWidget::class,
-        Components\Layout\NavbarNotification::class,
+        'navbar-darkmode-widget' => Layout\NavbarDarkmodeWidget::class,
+        'navbar-notification' => Layout\NavbarNotification::class,
     ];
 
     /**
-     * Array with the available form components.
+     * Array with the available form blade components.
      *
      * @var array
      */
     protected $formComponents = [
-        Components\Form\Button::class,
-        Components\Form\DateRange::class,
-        Components\Form\Input::class,
-        Components\Form\InputColor::class,
-        Components\Form\InputDate::class,
-        Components\Form\InputFile::class,
-        Components\Form\InputSlider::class,
-        Components\Form\InputSwitch::class,
-        Components\Form\Options::class,
-        Components\Form\Select::class,
-        Components\Form\Select2::class,
-        Components\Form\SelectBs::class,
-        Components\Form\Textarea::class,
-        Components\Form\TextEditor::class,
+        'button' => Form\Button::class,
+        'date-range' => Form\DateRange::class,
+        'input' => Form\Input::class,
+        'input-color' => Form\InputColor::class,
+        'input-date' => Form\InputDate::class,
+        'input-file' => Form\InputFile::class,
+        'input-file-krajee' => Form\InputFileKrajee::class,
+        'input-slider' => Form\InputSlider::class,
+        'input-switch' => Form\InputSwitch::class,
+        'options' => Form\Options::class,
+        'select' => Form\Select::class,
+        'select2' => Form\Select2::class,
+        'select-bs' => Form\SelectBs::class,
+        'textarea' => Form\Textarea::class,
+        'text-editor' => Form\TextEditor::class,
     ];
 
     /**
-     * Array with the available tool components.
+     * Array with the available tool blade components.
      *
      * @var array
      */
     protected $toolComponents = [
-        Components\Tool\Datatable::class,
-        Components\Tool\Modal::class,
+        'datatable' => Tool\Datatable::class,
+        'modal' => Tool\Modal::class,
     ];
 
     /**
-     * Array with the available widget components.
+     * Array with the available widget blade components.
      *
      * @var array
      */
     protected $widgetComponents = [
-        Components\Widget\Alert::class,
-        Components\Widget\Callout::class,
-        Components\Widget\Card::class,
-        Components\Widget\InfoBox::class,
-        Components\Widget\ProfileColItem::class,
-        Components\Widget\ProfileRowItem::class,
-        Components\Widget\ProfileWidget::class,
-        Components\Widget\Progress::class,
-        Components\Widget\SmallBox::class,
+        'alert' => Widget\Alert::class,
+        'callout' => Widget\Callout::class,
+        'card' => Widget\Card::class,
+        'info-box' => Widget\InfoBox::class,
+        'profile-col-item' => Widget\ProfileColItem::class,
+        'profile-row-item' => Widget\ProfileRowItem::class,
+        'profile-widget' => Widget\ProfileWidget::class,
+        'progress' => Widget\Progress::class,
+        'small-box' => Widget\SmallBox::class,
     ];
 
     /**
@@ -86,28 +94,23 @@ class AdminLteServiceProvider extends BaseServiceProvider
         // Bind a singleton instance of the AdminLte class into the service
         // container.
 
-        $this->app->singleton(AdminLte::class, function (Container $app) {
-            return new AdminLte(
-                $app['config']['adminlte.filters'],
-                $app['events'],
-                $app
-            );
+        $this->app->singleton(AdminLte::class, function () {
+            return new AdminLte(config('adminlte.filters', []));
         });
     }
 
     /**
-     * Bootstrap the package's services.
+     * Bootstrap the package services.
      *
      * @return void
      */
-    public function boot(Factory $view, Dispatcher $events, Repository $config)
+    public function boot()
     {
         $this->loadViews();
         $this->loadTranslations();
         $this->loadConfig();
         $this->registerCommands();
-        $this->registerViewComposers($view);
-        $this->registerMenu($events, $config);
+        $this->registerViewComposers();
         $this->loadComponents();
         $this->loadRoutes();
     }
@@ -120,7 +123,7 @@ class AdminLteServiceProvider extends BaseServiceProvider
     private function loadViews()
     {
         $viewsPath = $this->packagePath('resources/views');
-        $this->loadViewsFrom($viewsPath, 'adminlte');
+        $this->loadViewsFrom($viewsPath, $this->pkgPrefix);
     }
 
     /**
@@ -130,96 +133,63 @@ class AdminLteServiceProvider extends BaseServiceProvider
      */
     private function loadTranslations()
     {
-        $translationsPath = $this->packagePath('resources/lang');
-        $this->loadTranslationsFrom($translationsPath, 'adminlte');
+        $transPath = $this->packagePath('resources/lang');
+        $this->loadTranslationsFrom($transPath, $this->pkgPrefix);
     }
 
     /**
-     * Load the package config.
+     * Load the package configuration.
      *
      * @return void
      */
     private function loadConfig()
     {
         $configPath = $this->packagePath('config/adminlte.php');
-        $this->mergeConfigFrom($configPath, 'adminlte');
+        $this->mergeConfigFrom($configPath, $this->pkgPrefix);
     }
 
     /**
-     * Get the absolute path to some package resource.
-     *
-     * @param string $path The relative path to the resource
-     * @return string
-     */
-    private function packagePath($path)
-    {
-        return __DIR__."/../$path";
-    }
-
-    /**
-     * Register the package's artisan commands.
+     * Register the artisan commands of the package.
      *
      * @return void
      */
     private function registerCommands()
     {
-        $this->commands([
-            AdminLteInstallCommand::class,
-            AdminLteStatusCommand::class,
-            AdminLteUpdateCommand::class,
-            AdminLtePluginCommand::class,
-        ]);
+        if ($this->app->runningInConsole()) {
+            $this->commands([
+                AdminLteInstallCommand::class,
+                AdminLtePluginCommand::class,
+                AdminLteRemoveCommand::class,
+                AdminLteStatusCommand::class,
+                AdminLteUpdateCommand::class,
+            ]);
+        }
     }
 
     /**
-     * Register the package's view composers.
+     * Register the view composers of the package. View composers are callbacks
+     * or class methods that are called when a view is rendered. If you have
+     * data that you want to be bound to a view each time that view is rendered,
+     * a view composer can help you organize that logic into a single location.
      *
      * @return void
      */
-    private function registerViewComposers(Factory $view)
+    private function registerViewComposers()
     {
-        $view->composer('adminlte::page', AdminLteComposer::class);
+        // Bind the AdminLte singleton instance into each adminlte page view.
+
+        View::composer('adminlte::page', function (\Illuminate\View\View $v) {
+            $v->with('adminlte', $this->app->make(AdminLte::class));
+        });
     }
 
     /**
-     * Register the menu events handlers.
-     *
-     * @return void
-     */
-    private static function registerMenu(Dispatcher $events, Repository $config)
-    {
-        // Register a handler for the BuildingMenu event, this handler will add
-        // the menu defined on the config file to the menu builder instance.
-
-        $events->listen(
-            BuildingMenu::class,
-            function (BuildingMenu $event) use ($config) {
-                $menu = $config->get('adminlte.menu', []);
-                $menu = is_array($menu) ? $menu : [];
-                $event->menu->add(...$menu);
-            }
-        );
-    }
-
-    /**
-     * Load the blade view components.
+     * Load the blade view components of the package.
      *
      * @return void
      */
     private function loadComponents()
     {
-        // Support of x-components is only available for Laravel >= 7.x
-        // versions. So, we check if we can load components.
-
-        $canLoadComponents = method_exists(
-            'Illuminate\Support\ServiceProvider',
-            'loadViewComponentsAs'
-        );
-
-        if (! $canLoadComponents) {
-            return;
-        }
-
         // Load all the blade-x components.
 
         $components = array_merge(
@@ -229,19 +199,19 @@ class AdminLteServiceProvider extends BaseServiceProvider
             $this->widgetComponents
         );
 
-        $this->loadViewComponentsAs('adminlte', $components);
+        $this->loadViewComponentsAs($this->pkgPrefix, $components);
     }
 
     /**
-     * Load the package web routes.
+     * Load the routes of the package.
      *
      * @return void
      */
     private function loadRoutes()
     {
         $routesCfg = [
-            'as' => 'adminlte.',
-            'prefix' => 'adminlte',
+            'as' => "{$this->pkgPrefix}.",
+            'prefix' => $this->pkgPrefix,
             'middleware' => ['web'],
         ];
 
@@ -249,5 +219,16 @@ class AdminLteServiceProvider extends BaseServiceProvider
             $routesPath = $this->packagePath('routes/web.php');
             $this->loadRoutesFrom($routesPath);
         });
+    }
+
+    /**
+     * Get the absolute path to some package resource.
+     *
+     * @param  string  $path  The relative path to the resource
+     * @return string
+     */
+    private function packagePath($path)
+    {
+        return __DIR__."/../$path";
     }
 }
