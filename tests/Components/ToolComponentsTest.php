@@ -1,6 +1,6 @@
 <?php
 
-use JeroenNoten\LaravelAdminLte\Components;
+use JeroenNoten\LaravelAdminLte\View\Components;
 
 class ToolComponentsTest extends TestCase
 {
@@ -13,7 +13,7 @@ class ToolComponentsTest extends TestCase
 
         return [
             "{$base}.datatable" => new Components\Tool\Datatable('id', []),
-            "{$base}.modal"     => new Components\Tool\Modal('id'),
+            "{$base}.modal" => new Components\Tool\Modal('id'),
         ];
     }
 
@@ -33,22 +33,27 @@ class ToolComponentsTest extends TestCase
 
     /*
     |--------------------------------------------------------------------------
-    | Individual tool components tests.
+    | Datatable component tests.
     |--------------------------------------------------------------------------
     */
 
     public function testDatatableComponent()
     {
         // Test basic component.
+
         $component = new Components\Tool\Datatable('id', []);
 
         $tClass = $component->makeTableClass();
         $this->assertStringContainsString('table', $tClass);
+    }
 
+    public function testDatatableComponentWithAdvancedOptions()
+    {
         // Test advanced component.
         // $id, $heads, $theme, $headTheme, $bordered, $hoverable, $striped,
         // $compressed, $withFooter, $footerTheme, $beautify, $withButtons,
         // $config
+
         $component = new Components\Tool\Datatable(
             'id', [], 'primary', null, true, true, true, true, null, null,
             null, true, null
@@ -60,7 +65,33 @@ class ToolComponentsTest extends TestCase
         $this->assertStringContainsString('table-striped', $tClass);
         $this->assertStringContainsString('table-sm', $tClass);
         $this->assertStringContainsString('table-primary', $tClass);
+
+        $this->assertContains(
+            ['extend' => 'pageLength', 'className' => 'btn-default'],
+            $component->config['buttons']['buttons']
+        );
+
+        // Test advanced component with length change button disabled.
+        // $id, $heads, $theme, $headTheme, $bordered, $hoverable, $striped,
+        // $compressed, $withFooter, $footerTheme, $beautify, $withButtons,
+        // $config
+
+        $component = new Components\Tool\Datatable(
+            'id', [], 'primary', null, true, true, true, true, null, null,
+            null, true, ['lengthChange' => false]
+        );
+
+        $this->assertNotContains(
+            ['extend' => 'pageLength', 'className' => 'btn-default'],
+            $component->config['buttons']['buttons']
+        );
     }
+
+    /*
+    |--------------------------------------------------------------------------
+    | Modal component tests.
+    |--------------------------------------------------------------------------
+    */
 
     public function testModalComponent()
     {
@@ -80,7 +111,10 @@ class ToolComponentsTest extends TestCase
 
         $cbClass = $component->makeCloseButtonClass();
         $this->assertStringContainsString('bg-secondary', $cbClass);
+    }
 
+    public function testModalComponentWithAdvancedOptions()
+    {
         // Test with all constructor arguments:
         // $id, $title, $icon, $size, $theme, $vCentered, $scrollable,
         // $staticBackdrop, $disableAnimations.

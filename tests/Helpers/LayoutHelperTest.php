@@ -1,9 +1,38 @@
 <?php
 
+use Illuminate\Support\Facades\View;
 use JeroenNoten\LaravelAdminLte\Helpers\LayoutHelper;
 
 class LayoutHelperTest extends TestCase
 {
+    public function testMakeContentWrapperClasses()
+    {
+        // Test without config.
+
+        $data = LayoutHelper::makeContentWrapperClasses();
+        $this->assertEquals('content-wrapper', $data);
+
+        // Test with custom classes on the configuration.
+
+        config(['adminlte.classes_content_wrapper' => 'class1 class2']);
+
+        $data = LayoutHelper::makeContentWrapperClasses();
+        $this->assertStringContainsString('content-wrapper', $data);
+        $this->assertStringContainsString('class1', $data);
+        $this->assertStringContainsString('class2', $data);
+
+        // Test with cwrapper mode enabled.
+
+        config([
+            'adminlte.preloader.enabled' => true,
+            'adminlte.preloader.mode' => 'cwrapper',
+        ]);
+
+        $data = LayoutHelper::makeContentWrapperClasses();
+        $this->assertStringContainsString('content-wrapper', $data);
+        $this->assertStringContainsString('position-relative', $data);
+    }
+
     public function testMakeBodyData()
     {
         // Test without config.
@@ -53,7 +82,7 @@ class LayoutHelperTest extends TestCase
         $this->assertStringContainsString('data-scrollbar-auto-hide=s', $data);
     }
 
-    public function testMakeBodyClassesWithouConfig()
+    public function testMakeBodyClassesWithoutConfig()
     {
         // Test without config.
 
@@ -85,7 +114,7 @@ class LayoutHelperTest extends TestCase
         $data = LayoutHelper::makeBodyClasses();
         $this->assertStringContainsString('sidebar-mini-md', $data);
         $this->assertStringNotContainsString('sidebar-mini-xs', $data);
-        $this->assertNotRegExp('/sidebar-mini[^-]/', $data);
+        $this->assertDoesNotMatchRegularExpression('/sidebar-mini[^-]/', $data);
 
         // Test config 'sidebar_mini' => 'xs'.
 
@@ -93,7 +122,7 @@ class LayoutHelperTest extends TestCase
         $data = LayoutHelper::makeBodyClasses();
         $this->assertStringContainsString('sidebar-mini-xs', $data);
         $this->assertStringNotContainsString('sidebar-mini-md', $data);
-        $this->assertNotRegExp('/sidebar-mini[^-]/', $data);
+        $this->assertDoesNotMatchRegularExpression('/sidebar-mini[^-]/', $data);
     }
 
     public function testMakeBodyClassesWithSidebarCollapseConfig()
@@ -352,5 +381,28 @@ class LayoutHelperTest extends TestCase
         config(['adminlte.layout_dark_mode' => true]);
         $data = LayoutHelper::makeBodyClasses();
         $this->assertStringContainsString('dark-mode', $data);
+    }
+
+    public function testRightSidebarEnabledMethod()
+    {
+        // Test config 'right_sidebar' => true.
+
+        config(['adminlte.right_sidebar' => true]);
+        $this->assertTrue(LayoutHelper::isRightSidebarEnabled());
+
+        // Test config 'right_sidebar' => false.
+
+        config(['adminlte.right_sidebar' => false]);
+        $this->assertFalse(LayoutHelper::isRightSidebarEnabled());
+
+        // Test when section "right_sidebar" is defined.
+
+        View::inject('right_sidebar', 'dummy-content');
+        $this->assertTrue(LayoutHelper::isRightSidebarEnabled());
+
+        // Test when section "right_sidebar" is not defined.
+
+        View::flushSections();
+        $this->assertFalse(LayoutHelper::isRightSidebarEnabled());
     }
 }
